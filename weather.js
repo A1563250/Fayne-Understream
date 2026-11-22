@@ -16,14 +16,21 @@
     lightTimer: null,
     running: true,
     reduce: false,
+    heroBgEl: null,
     settings: { rainSound: false, thunder: true, rainIntensity: "full", waterRipple: "full", lowPerf: false,
-      rainLevel: 4, rainVolume: 0.5, bgm: "off", bgmVolume: 0.35 },
+      rainLevel: 4, rainVolume: 0.5, bgm: "off", bgmVolume: 0.35, harborBg: true, fxDayNight: true,
+      bgmMode: "loop", bgMode: "auto" },
+    /* bgMode: auto(跟随时间) / night_red / day_blue / old_harbor / pure */
+    /* bgmMode: loop(顺序循环) / single(单曲) / shuffle(随机) */
     audio: { ctx: null, rainSrc: null, rainGain: null, master: null, bgmEl: null, bgmKey: "off" },
     /* bgm: off / lofi_piano / musicbox_strings / citypop_electronic */
+    /* harborBg: true 显示港都城市图；false 切回纯色雨夜渐变 */
     BGM_FILES: {
       lofi_piano: "bgm_lofi_piano.mp3",
       musicbox_strings: "bgm_musicbox_strings.mp3",
-      citypop_electronic: "bgm_citypop_electronic.mp3"
+      citypop_electronic: "bgm_citypop_electronic.mp3",
+      vocal_jazz: "bgm_vocal_jazz.mp3",
+      vocal_jazz_inst: "bgm_vocal_jazz_inst.mp3"
     },
   };
 
@@ -229,21 +236,40 @@
     W.audio.bgmKey = "off";
   }
 
+  const BGM_KEYS = ["lofi_piano", "musicbox_strings", "citypop_electronic", "vocal_jazz", "vocal_jazz_inst"];
+
+  function pickNextBgm(currentKey) {
+    const mode = W.settings.bgmMode || "loop";
+    if (mode === "single") return currentKey;   // 单曲模式：不切歌
+    if (mode === "shuffle") {
+      let next;
+      do { next = BGM_KEYS[Math.floor(Math.random() * BGM_KEYS.length)]; }
+      while (next === currentKey && BGM_KEYS.length > 1);
+      return next;
+    }
+    // loop 顺序循环
+    const idx = BGM_KEYS.indexOf(currentKey);
+    return BGM_KEYS[(idx + 1) % BGM_KEYS.length];
+  }
+
   function startBgm(key) {
     stopBgm();
     if (!key || key === "off") return;
     const file = W.BGM_FILES[key];
     if (!file) return;
     const el = new Audio(file);
-    el.loop = true;
+    /* 单曲模式：循环当前；其他模式：播完切下一首 */
+    el.loop = (W.settings.bgmMode === "single");
     el.volume = W.settings.bgmVolume || 0.35;
     el.crossOrigin = "anonymous";
+    el.addEventListener("ended", () => {
+      const next = pickNextBgm(W.audio.bgmKey);
+      if (next && next !== W.audio.bgmKey) startBgm(next);
+    });
     el.play().then(() => {
       W.audio.bgmEl = el;
       W.audio.bgmKey = key;
-    }).catch(() => {
-      // 自动播放被拦截，等用户下次点击开关时再触发
-    });
+    }).catch(() => {});
     W.audio.bgmEl = el;
     W.audio.bgmKey = key;
   }
@@ -281,7 +307,11 @@
     const ctl = document.createElement("div");
     ctl.className = "weather-ctl";
     ctl.innerHTML =
-      '<button class="wc-toggle" title="雨势控制" aria-label="雨势控制">☔</button>' +
+      '<button class="wc-toggle" title="雨势控制" aria-label="雨势控制">' +
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" fill="rgba(79,216,232,0.15)"/>' +
+      '<path d="M7 17l-1 2.5M12 17l-1 2.5M17 17l-1 2.5" />' +
+      '</svg></button>' +
       '<div class="wc-panel panel">' +
       '  <h4>雨势控制</h4>' +
       '  <div class="wc-row"><span>环境雨声</span><i class="switch" data-k="rainSound"></i></div>' +
@@ -291,12 +321,18 @@
       '  <div class="wc-row"><span>水面波动</span>' +
       '    <button class="chip sm" data-k="waterRipple">完整</button></div>' +
       '  <div class="wc-row"><span>低性能模式</span><i class="switch" data-k="lowPerf"></i></div>' +
+      '  <div class="wc-row"><span>港都背景</span><i class="switch" data-k="harborBg"></i></div>' +
+      '  <div class="wc-row"><span>背景模式</span>' +
+      '    <button class="chip sm" data-k="bgMode">自动</button></div>' +
+      '  <div class="wc-row"><span>特效白夜（关=恒为白天色）</span><i class="switch" data-k="fxDayNight"></i></div>' +
       '  <div class="wc-row"><span>雨势大小</span>' +
       '    <button class="chip sm" data-k="rainLevel">暴雨</button></div>' +
       '  <div class="wc-row"><span>雨声音量</span>' +
       '    <input type="range" min="0" max="100" value="50" data-k="rainVolume" style="width:90px;accent-color:#4fd8e8"></div>' +
       '  <div class="wc-row"><span>背景音乐</span>' +
       '    <button class="chip sm" data-k="bgm">关</button></div>' +
+      '  <div class="wc-row"><span>播放模式</span>' +
+      '    <button class="chip sm" data-k="bgmMode">循环</button></div>' +
       '  <div class="wc-row"><span>BGM 音量</span>' +
       '    <input type="range" min="0" max="100" value="35" data-k="bgmVolume" style="width:90px;accent-color:#4fd8e8"></div>' +
       '  <p class="wc-note">这些选项只影响天气与动效，不会影响录音播放，也不会改变作品开放状态。</p>' +
@@ -327,14 +363,37 @@
           apply(); saveSettings();
         });
       } else if (k === "bgm") {
-        const BGM_LABELS = { off: "关", lofi_piano: "Lo-fi钢琴", musicbox_strings: "八音盒", citypop_electronic: "轻电音" };
-        const BGM_ORDER = ["off", "lofi_piano", "musicbox_strings", "citypop_electronic"];
+        const BGM_LABELS = { off: "关", lofi_piano: "未署名的雨夜", musicbox_strings: "椿色盒中", citypop_electronic: "霓虹永坠", vocal_jazz: "未竟之爱", vocal_jazz_inst: "缱绻夜梦" };
+        const BGM_ORDER = ["off", "lofi_piano", "musicbox_strings", "citypop_electronic", "vocal_jazz", "vocal_jazz_inst"];
         btn.textContent = BGM_LABELS[W.settings.bgm || "off"];
         btn.addEventListener("click", () => {
           const cur = BGM_ORDER.indexOf(W.settings.bgm || "off");
           const next = BGM_ORDER[(cur + 1) % BGM_ORDER.length];
           btn.textContent = BGM_LABELS[next];
           setBgm(next);
+        });
+      } else if (k === "bgmMode") {
+        const MODE_LABELS = { loop: "循环", single: "单曲", shuffle: "随机" };
+        const MODE_ORDER = ["loop", "single", "shuffle"];
+        btn.textContent = MODE_LABELS[W.settings.bgmMode || "loop"];
+        btn.addEventListener("click", () => {
+          const cur = MODE_ORDER.indexOf(W.settings.bgmMode || "loop");
+          const next = MODE_ORDER[(cur + 1) % MODE_ORDER.length];
+          W.settings.bgmMode = next;
+          btn.textContent = MODE_LABELS[next];
+          if (W.audio.bgmEl) W.audio.bgmEl.loop = (next === "single");
+          saveSettings();
+        });
+      } else if (k === "bgMode") {
+        const BG_LABELS = { auto: "自动", night_red: "黯渡涅川", day_blue: "凉忆妄川", old_harbor: "永弃之溺川", pure: "虚妄之川" };
+        const BG_ORDER = ["auto", "night_red", "day_blue", "old_harbor", "pure"];
+        btn.textContent = BG_LABELS[W.settings.bgMode || "auto"];
+        btn.addEventListener("click", () => {
+          const cur = BG_ORDER.indexOf(W.settings.bgMode || "auto");
+          const next = BG_ORDER[(cur + 1) % BG_ORDER.length];
+          W.settings.bgMode = next;
+          btn.textContent = BG_LABELS[next];
+          apply(); saveSettings();
         });
       } else {
         btn.textContent = W.settings[k] === "full" ? "完整" : "减弱";
@@ -380,6 +439,43 @@
       else ripple.style.opacity = "";
     }
     if (s.rainSound) startRainSound(); else stopRainSound();
+
+    /* ---- 背景模式切换（4种） ---- */
+    const bgEl = W.heroBgEl;
+    if (bgEl) {
+      const mode = s.bgMode || "auto";
+      const h = new Date().getHours();
+      const isNight = (h >= 18 || h < 6);
+      let imgFile = null;
+      if (mode === "night_red") imgFile = "hero_bg_night_red.jpg";
+      else if (mode === "day_blue") imgFile = "hero_bg_day_blue.jpg";
+      else if (mode === "old_harbor") imgFile = "hero_bg.jpg";
+      else if (mode === "pure") imgFile = null;
+      else { /* auto */
+        imgFile = isNight ? "hero_bg_night_red.jpg" : "hero_bg_day_blue.jpg";
+      }
+      if (imgFile) {
+        bgEl.style.display = "";
+        bgEl.style.backgroundImage = `url("${imgFile}")`;
+      } else {
+        bgEl.style.display = "none";
+      }
+    }
+
+    /* 刷新鼠标特效白夜主题 */
+    if (typeof window.__applyFxTheme === "function") window.__applyFxTheme();
+
+    /* ---- 同步右上角状态条 ---- */
+    const rainLevelLabel = RAIN_LEVELS[s.rainLevel] ? RAIN_LEVELS[s.rainLevel].label : "暴雨";
+    const thunderLabel = s.thunder ? "低" : "静";
+    const chips = document.querySelectorAll(".corner-status .status-chip");
+    if (chips.length > 0) {
+      chips[0].innerHTML =
+        '<span class="net-dot ' + (navigator.onLine ? "online" : "offline") + '" id="netDot"></span>' +
+        "<span>雨势 <b>" + rainLevelLabel + "</b></span>" +
+        "<span>雷频 <b>" + thunderLabel + "</b></span>";
+    }
+
     buildDrops();
     scheduleLightning();
     W.running = !s.lowPerf;
@@ -432,15 +528,50 @@
       img.className = "hero-bg-img";
       img.style.backgroundImage = 'url("' + window.SITE_DATA.assets.heroBg + '")';
       document.body.appendChild(img);
+      W.heroBgEl = img;
+      if (!W.settings.harborBg) img.style.display = "none";
       const pre = new Image();
       pre.onload = () => img.classList.add("on");
       pre.src = window.SITE_DATA.assets.heroBg;
+
+      /* 时间明暗：按现实时间调整 hero_bg 亮度 */
+      function applyTimeTint() {
+        const h = new Date().getHours();
+        /* 清晨 5-8 微亮 / 白天 8-17 更亮 / 黄昏 17-19 偏暖 / 深夜 19-5 最暗 */
+        let tint = "rgba(4,8,15,0.55)";    // 默认深夜
+        if (h >= 5 && h < 8)  tint = "rgba(20,30,55,0.35)";
+        if (h >= 8 && h < 17) tint = "rgba(40,55,80,0.15)";
+        if (h >= 17 && h < 19) tint = "rgba(60,40,60,0.30)";
+        img.style.filter = "brightness(1.0)";
+        /* 用额外叠加层表示明暗 */
+        let tintEl = document.getElementById("timeTint");
+        if (!tintEl) {
+          tintEl = document.createElement("div");
+          tintEl.id = "timeTint";
+          tintEl.style.cssText = "position:fixed;inset:0;z-index:1;pointer-events:none;transition:background 2s;";
+          document.body.appendChild(tintEl);
+        }
+        tintEl.style.background = tint;
+      }
+      applyTimeTint();
+      setInterval(applyTimeTint, 60000);
+
+      /* 灯光变幻：霓虹灯招牌随机闪烁 */
+      function flicker() {
+        if (img.classList.contains("on")) {
+          const cur = parseFloat(img.style.opacity || "0.92");
+          img.style.opacity = (0.88 + Math.random() * 0.08).toFixed(2);
+          setTimeout(() => { img.style.opacity = "0.92"; }, 120 + Math.random() * 200);
+        }
+      }
+      setInterval(() => { if (Math.random() < 0.18) flicker(); }, 2500);
     }
   }
 
   window.NichuanWeather = {
     init,
     apply,
+    getFxDayNight() { return !!W.settings.fxDayNight; },
     toggleRainSound(on) {
       W.settings.rainSound = !!on;
       apply();

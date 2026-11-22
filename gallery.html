@@ -42,6 +42,20 @@
     <div class="track-tip">拖动或使用方向键，可沿馆藏横向移动</div>
   </div>
 
+  <div class="upload-zone" id="uploadZone">
+    <div style="font-size:24px;margin-bottom:6px">🌧</div>
+    <div>把你的光投递给溺川</div>
+    <div style="font-size:11.5px;color:#6c7a99;margin-top:6px">选择一张图，它会被档案馆本地收录（仅存在你当前浏览器里，不会被其他访客看到）</div>
+    <input type="file" id="uploadInput" accept="image/*" style="display:none">
+  </div>
+
+  <!-- Giscus：访客对作品集的真实留言 -->
+  <div class="giscus-section" style="margin-top:36px;padding-top:24px;border-top:1px solid rgba(140,170,255,0.15)">
+    <h3 style="font-size:16px;color:#cfd8ec;margin-bottom:6px">馆藏回声</h3>
+    <p style="font-size:12.5px;color:#8995b3;margin-bottom:16px">对某张映像有想说的话，留在这里（需登录 GitHub）。</p>
+    <div id="giscusThread"></div>
+  </div>
+
 </div>
 </div>
 <script src="site-data.js"></script>

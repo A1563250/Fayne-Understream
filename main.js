@@ -75,12 +75,22 @@
     const el = document.createElement("div");
     el.className = "corner-status";
     el.innerHTML =
-      '<div class="status-chip"><span class="dot"></span>' +
+      '<div class="status-chip"><span class="net-dot online" id="netDot"></span>' +
       "<span>雨势 <b>暴雨</b></span><span>雷频 <b>低</b></span></div>" +
       '<div class="status-chip"><span>身份</span>' +
       '<a class="lv" href="bond.html" title="心轨刻度">溺途访者</a></div>';
     document.body.appendChild(el);
     refreshCorner();
+    /* 在线/离线检测 */
+    const dot = $("#netDot", el);
+    const updateNet = () => {
+      if (!dot) return;
+      if (navigator.onLine) { dot.classList.remove("offline"); dot.classList.add("online"); }
+      else { dot.classList.remove("online"); dot.classList.add("offline"); }
+    };
+    window.addEventListener("online", updateNet);
+    window.addEventListener("offline", updateNet);
+    updateNet();
   }
 
   function refreshCorner() {
@@ -203,6 +213,8 @@
       const t = themeOf(w.theme);
       const hasImg = !!w.image;
       const isLost = !w.isDemo && !hasImg;
+      const likes = (window.__likeStore && window.__likeStore[w.id]) || 0;
+      const liked  = (window.__likeLiked && window.__likeLiked[w.id]) || false;
       return (
         '<article class="wcard" data-id="' + w.id + '" data-theme="' + w.theme + '">' +
         '<div class="thumb">' +
@@ -211,6 +223,7 @@
           "<small>" + (w.isDemo ? "临时映像 · 待生成" : "尚未送抵溺川") + "</small></div>") +
         '<span class="badge ' + (w.isDemo ? "demo" : "lost") + '">' +
         (w.isDemo ? "临时映像 / DEMO" : isLost ? "遗失的光" : "馆藏") + "</span>" +
+        '<button class="like-btn ' + (liked ? "liked" : "") + '" data-like="' + w.id + '">♥ ' + likes + "</button>" +
         "</div>" +
         '<div class="meta"><h3>' + w.title + "</h3>" +
         '<div class="mrow"><span>' + t.name + "</span><span>" +
@@ -226,10 +239,37 @@
       track.innerHTML = list.map(cardHTML).join("") ||
         '<div class="prose">没有在当前雨层中找到对应的映像。请更换关键词，或回到全部馆藏。</div>';
       $$(".wcard", track).forEach(c => {
-        c.addEventListener("click", () => {
+        c.addEventListener("click", e => {
+          if (e.target.closest(".like-btn")) return;   // 点赞按钮不跳转
           if (window.BondSys) BondSys.award("theme_first", c.dataset.theme);
           location.href = "work.html?work=" + c.dataset.id;
         });
+      });
+      $$(".like-btn", track).forEach(btn => {
+        btn.addEventListener("click", e => {
+          e.stopPropagation();
+          const id = btn.dataset.like;
+          window.__likeStore = window.__likeStore || JSON.parse(localStorage.getItem("fn_likes") || "{}");
+          window.__likeLiked = window.__likeLiked || JSON.parse(localStorage.getItem("fn_liked") || "{}");
+          if (window.__likeLiked[id]) {
+            window.__likeStore[id] = Math.max(0, (window.__likeStore[id] || 1) - 1);
+            window.__likeLiked[id] = false;
+          } else {
+            window.__likeStore[id] = (window.__likeStore[id] || 0) + 1;
+            window.__likeLiked[id] = true;
+            if (window.BondSys) BondSys.award("msg_reply");
+            toast("这枚光已被你拾起。", true);
+          }
+          localStorage.setItem("fn_likes", JSON.stringify(window.__likeStore));
+          localStorage.setItem("fn_liked", JSON.stringify(window.__likeLiked));
+          render();
+        });
+      });
+      /* 点赞按钮白夜颜色 */
+      const isNight = document.body.classList.contains("fx-night");
+      $$(".like-btn", track).forEach(btn => {
+        btn.classList.remove("day-like", "night-like");
+        btn.classList.add(isNight ? "night-like" : "day-like");
       });
       buildDots();
     }
@@ -254,6 +294,28 @@
       track.scrollBy({ left: -340, behavior: "smooth" }));
     $("#nextBtn").addEventListener("click", () =>
       track.scrollBy({ left: 340, behavior: "smooth" }));
+
+    /* 上传作品到雨幕（本地存储） */
+    const uploadZone = $("#uploadZone");
+    const uploadInput = $("#uploadInput");
+    if (uploadZone && uploadInput) {
+      uploadZone.addEventListener("click", () => uploadInput.click());
+      uploadInput.addEventListener("change", () => {
+        const file = uploadInput.files && uploadInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const mine = JSON.parse(localStorage.getItem("fn_my_uploads") || "[]");
+          mine.push({ name: file.name, data: reader.result, t: Date.now() });
+          localStorage.setItem("fn_my_uploads", JSON.stringify(mine));
+          toast("你的光已被溺川收录（仅存在此浏览器）。", true);
+          uploadZone.innerHTML = '<div style="font-size:24px;margin-bottom:6px">🌧</div>' +
+            '<div style="color:#4fd8e8">已投递 ' + mine.length + ' 枚光</div>' +
+            '<div style="font-size:11.5px;color:#6c7a99;margin-top:6px">点击可继续投递</div>';
+        };
+        reader.readAsDataURL(file);
+      });
+    }
 
     document.addEventListener("keydown", e => {
       if (e.key === "ArrowRight") track.scrollBy({ left: 340, behavior: "smooth" });
@@ -352,29 +414,53 @@
 
   function initAbout() {
     const c = window.SITE_DATA.contact;
+    const R = window.SITE_DATA.reality;
 
-    $("#skillGrid").innerHTML = window.SITE_DATA.reality.skills.map(s =>
-      '<div class="skill-item panel demo-flag">' + s + "</div>").join("");
-    $("#toolsRow").innerHTML = window.SITE_DATA.reality.tools.map(t =>
-      '<span class="tool-tag">' + t + "</span>").join("");
-    $("#yearsCell").textContent = window.SITE_DATA.reality.years || "时间坐标尚未公开。";
-    $("#eventsCell").textContent = window.SITE_DATA.reality.events || "暂无获准公开的事件记录。";
+    /* 可调用的光（按当前羁绊等级解锁） */
+    const myLv = (window.BondSys && BondSys.state && BondSys.state.level) || 1;
+    const lightsRow = $("#lightsRow");
+    if (lightsRow && R.lights) {
+      lightsRow.innerHTML = R.lights.map(L => {
+        const unlocked = myLv >= L.lv;
+        return '<div class="light-item panel ' + (unlocked ? "" : "locked") + '">' +
+          '<div class="l-head"><b>Lv.' + L.lv + '</b><span>' + (unlocked ? L.name : "尚未抵达") + "</span></div>" +
+          '<p class="l-desc">' + (unlocked ? L.desc : "当你在雨中走得更深，这枚光会被递到手上。") + "</p>" +
+        "</div>";
+      }).join("");
+    }
 
+    /* 事件记录（按羁绊等级渐进解锁） */
+    const eventLog = $("#eventLog");
+    if (eventLog && R.eventLog) {
+      eventLog.innerHTML = R.eventLog.map(E => {
+        const unlocked = myLv >= E.lv;
+        return '<div class="event-item ' + (unlocked ? "" : "locked") + '">' +
+          '<div class="e-head"><span>Lv.' + E.lv + "</span><b>" + (unlocked ? E.title : "未被命名") + "</b></div>" +
+          '<p class="e-body">' + (unlocked ? E.content : "档案尚未记录这一段。继续在雨中停留，事件会自己浮上来。") + "</p>" +
+        "</div>";
+      }).join("");
+    }
+
+    /* 时间坐标 */
+    const yearsCell = $("#yearsCell");
+    if (yearsCell) yearsCell.textContent = R.years || "时间坐标尚未公开。";
+
+    /* 联系方式 */
     const box = $("#contactBox");
     let html = "";
     if (c.email) {
       html += '<div class="contact-row"><div class="cl"><b>邮箱</b><span>' + c.email +
         '</span></div><button class="copy-btn" data-copy="' + c.email + '">复制坐标</button></div>';
-    } else {
-      html += '<div class="contact-row"><div class="cl"><b>公开邮箱</b><span>尚未录入</span></div></div>';
     }
     if (c.socials && c.socials.length) {
       c.socials.forEach(s => {
-        html += '<div class="contact-row"><div class="cl"><b>' + s.name + '</b><span>' + s.url +
-        '</span></div><a class="copy-btn" href="' + s.url + '" target="_blank" rel="noopener">前往</a></div>';
+        const handle = s.handle || "";
+        html += '<div class="contact-row"><div class="cl"><b>' + s.name + '</b><span>' + handle + '</span></div>' +
+          '<a class="copy-btn" href="' + s.url + '" target="_blank" rel="noopener">前往</a></div>';
       });
-    } else {
-      html += '<div class="contact-row"><div class="cl"><b>社交坐标</b><span>尚未录入</span></div></div>';
+    }
+    if (c.landing) {
+      html += '<p class="privacy-line" style="margin-top:14px;font-style:italic;color:#a8b8d8">' + c.landing + '</p>';
     }
     html += '<p class="privacy-line">不公开手机号、私人微信与现实住址。</p>';
     box.innerHTML = html;
@@ -466,6 +552,100 @@
       a.addEventListener("click", () => {
         if (window.BondSys) BondSys.award("msg_reply");
       });
+    });
+
+    /* ---------- 伪 AI 互动留言 ---------- */
+    const replyBox = $(".reply-box");
+    if (replyBox) initReply(replyBox);
+  }
+
+  /* 伪 AI 回复语料库（按关键词匹配） */
+  function pickReply(text, emoji) {
+    const t = (text || "").toLowerCase();
+    const rules = [
+      { k: ["你好", "hi", "hello", "在吗", "嗨"], r: "夜还没有完全深。你能找到这里，说明雨没有阻挡你。先在馆里随便走走，不必急着说什么。" },
+      { k: ["作品", "画", "图", "画得好", "好看"], r: "这些光不是一次就被拾起的。它们曾在不同的夜里被我反复看过，最后才被允许放进馆藏。" },
+      { k: ["谢谢", "感谢", "辛苦"], r: "不必谢。你愿意在雨里走这一段，已经是给这些映像最好的回声。" },
+      { k: ["难过", "伤心", "孤独", "累", "emo"], r: "今夜的雨比较重。如果这些影像暂时不能替你带走什么，至少它们没有让你一个人看雨。" },
+      { k: ["开心", "高兴", "棒", "喜欢"], r: "听见了。在溺川，开心也是一种会被记下的天气。" },
+      { k: ["想你", "想念", "喜欢"], r: "……这些话不必大声说出来。雨会替我们接住。" },
+      { k: ["天气", "下雨", "雨"], r: "今晚雨势 4 级。远处有低频雷声。水面波纹完整。档案馆正常运转。" },
+      { k: ["几点", "时间", "现在"], r: "溺川的时间停在某个暴雨夜之后。现实里几点钟，要看你窗外的天。" },
+      { k: ["邮箱", "邮件", "联系"], r: "公开邮箱已留在档案末尾。私人坐标不会出现在馆藏。" },
+      { k: ["小红书", "号"], r: "小红书会更新一些没有进馆藏的碎片。看与不看，都不算失礼。" },
+      { k: ["以后", "未来", "下次"], r: "若雨停之后仍想回来，馆藏深处会为再次抵达的人留一盏很暗的灯。" },
+    ];
+    for (const rule of rules) {
+      if (rule.k.some(word => t.includes(word.toLowerCase()))) return rule.r;
+    }
+    /* 表情兜底 */
+    if (emoji === "😊") return "你的表情被雨幕接收。今夜的湿度因此上升了一点点。";
+    if (emoji === "😢") return "雨和眼泪有时候长得很像。不必掩饰，馆藏见过更湿的人。";
+    if (emoji === "😮") return "你被什么吓到了？或许是雷声，或许是某张映画。";
+    if (emoji === "😴") return "困的话就把页面放着，雨声适合当白噪音。";
+    if (emoji === "🌧") return "雨势记录已收到。今夜的雨与你无关，但与这里有关。";
+    if (emoji === "💌") return "这枚信封被档案馆收下了。它不会被寄出，但会被读很多遍。";
+    return "信号断续。我没有完全听清你说的话，但我已经把它抄在了档案的边角。";
+  }
+
+  function initReply(box) {
+    const ta = box.querySelector("#replyText");
+    const log = box.querySelector("#replyLog");
+    const send = box.querySelector("#replySend");
+    let chosenEmoji = null;
+
+    /* 表情 → 语音文件映射 */
+    const VOICE_MAP = {
+      "ice_nod": "voice_happy.mp3",
+      "ice_welcome": "voice_happy.mp3",
+      "ice_hold": "voice_happy.mp3",
+      "ice_rain": "voice_rain.mp3",
+      "ice_gn": "voice_sleepy.mp3",
+      "bride_give": "voice_miss.mp3",
+      "bride_recv": "voice_happy.mp3",
+      "bride_here": "voice_sad.mp3"
+    };
+
+    function playVoice(emoji) {
+      const file = VOICE_MAP[emoji];
+      if (!file) return;
+      /* 先停掉正在播放的 */
+      if (window.__replyAudio) {
+        try { window.__replyAudio.pause(); } catch (e) {}
+      }
+      const audio = new Audio(file);
+      audio.volume = 0.85;
+      audio.play().catch(() => {});
+      window.__replyAudio = audio;
+    }
+
+    box.querySelectorAll(".emoji-row button").forEach(b => {
+      b.addEventListener("click", () => {
+        chosenEmoji = b.dataset.emoji;
+        ta.value = (ta.value ? ta.value + " " : "") + chosenEmoji;
+        ta.focus();
+        playVoice(chosenEmoji);
+      });
+    });
+    send.addEventListener("click", () => {
+      const text = (ta.value || "").trim();
+      if (!text) { toast("先写下一句回声。"); return; }
+      const me = document.createElement("div");
+      me.innerHTML = '<span class="me">你：</span>' + text;
+      log.appendChild(me);
+      ta.value = "";
+      if (window.BondSys) BondSys.award("msg_reply");
+      /* 模拟 1.2 秒延迟回复 */
+      send.disabled = true; send.textContent = "雨幕接通中…";
+      setTimeout(() => {
+        const r = pickReply(text, chosenEmoji);
+        const her = document.createElement("div");
+        her.innerHTML = '<span class="her">妃音·辞：</span>' + r;
+        log.appendChild(her);
+        send.disabled = false; send.textContent = "穿过雨幕发送";
+        chosenEmoji = null;
+        log.scrollTop = log.scrollHeight;
+      }, 1200);
     });
   }
 
@@ -642,6 +822,285 @@
             raf = requestAnimationFrame(tick);
           } else { raf = null; }
         }
+      }
+    }
+
+    /* ================= 新增：鼠标特效 + 待机 + 白夜切换 ================= */
+
+    /* --- 特效白夜主题：白天雾蓝 / 夜晚猩红 --- */
+    function applyFxTheme() {
+      const fxOn = (window.NichuanWeather && typeof NichuanWeather.getFxDayNight === "function")
+        ? NichuanWeather.getFxDayNight() : true;
+      let isNight;
+      if (!fxOn) {
+        isNight = false;   /* 开关关闭：恒定白天色 */
+      } else {
+        const h = new Date().getHours();
+        isNight = (h >= 18 || h < 6);
+      }
+      document.body.classList.toggle("fx-night", isNight);
+      document.body.classList.toggle("fx-day", !isNight);
+      const glow = document.getElementById("cursorGlow");
+      if (glow) {
+        glow.classList.remove("day", "night");
+        glow.classList.add(isNight ? "night" : "day");
+      }
+      return isNight ? "night" : "day";
+    }
+    window.__applyFxTheme = applyFxTheme;
+    applyFxTheme();
+    setInterval(applyFxTheme, 60000);
+
+    /* 点击特效：Fenay 花样字 + 光粒子 */
+    function spawnClickFx(x, y) {
+      if (document.body.classList.contains("lowperf")) return;
+      const theme = applyFxTheme();
+
+      /* Fenay 文字 */
+      const t = document.createElement("div");
+      t.className = "fenay-text " + theme;
+      t.textContent = "Fenay";
+      t.style.left = x + "px";
+      t.style.top = y + "px";
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 1200);
+
+      /* 光粒子 */
+      const p = document.createElement("div");
+      p.className = "click-particle " + theme;
+      p.style.left = x + "px";
+      p.style.top = y + "px";
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 30 + Math.random() * 20;
+      p.style.setProperty("--dx", Math.cos(angle) * dist + "px");
+      p.style.setProperty("--dy", Math.sin(angle) * dist + "px");
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 700);
+    }
+
+    document.addEventListener("click", (e) => spawnClickFx(e.clientX, e.clientY));
+
+    /* 手机端：手指点击产生特效 */
+    document.addEventListener("touchstart", (e) => {
+      const t = e.touches[0];
+      if (t) spawnClickFx(t.clientX, t.clientY);
+    }, { passive: true });
+
+    /* 鼠标拖尾光晕（跟随鼠标 + 手指滑动） */
+    if (!document.body.classList.contains("lowperf") && !window.matchMedia("(max-width: 768px)").matches) {
+      const glow = document.createElement("div");
+      glow.id = "cursorGlow";
+      glow.className = (document.body.classList.contains("fx-night") ? "night" : "day");
+      document.body.appendChild(glow);
+      document.addEventListener("mousemove", (e) => {
+        glow.style.transform = `translate(${e.clientX - 100}px, ${e.clientY - 100}px)`;
+      });
+    } else if (!document.body.classList.contains("lowperf")) {
+      /* 手机端也放一个轻量光晕，跟随手指 */
+      const glow = document.createElement("div");
+      glow.id = "cursorGlow";
+      glow.style.width = "140px"; glow.style.height = "140px";
+      glow.className = (document.body.classList.contains("fx-night") ? "night" : "day");
+      document.body.appendChild(glow);
+      document.addEventListener("touchmove", (e) => {
+        const t = e.touches[0];
+        if (t) glow.style.transform = `translate(${t.clientX - 70}px, ${t.clientY - 70}px)`;
+      }, { passive: true });
+    }
+
+    /* 待机 25 秒昏暗模式 + 人物穿出互动 */
+    let idleTimer = null;
+    let idleDialog = null;
+    let idleAudio = null;
+
+    function buildIdleDialog() {
+      if (idleDialog) return idleDialog;
+      idleDialog = document.createElement("div");
+      idleDialog.id = "idleDialog";
+      idleDialog.innerHTML =
+        '<div class="dialog-head"><span>妃音·辞</span><span>溺川频段 · 待机中</span></div>' +
+        '<div class="dialog-body" id="idleText">……</div>' +
+        '<div style="font-size:12px;color:#8995b3;margin-top:10px">🎤 用语音回答她即可离开待机（需浏览器麦克风权限）</div>';
+      document.body.appendChild(idleDialog);
+      return idleDialog;
+    }
+
+    /* 多条待机轮播：语音文件 + 同步文字 */
+    const IDLE_LINES = [
+      { audio: "idle_voice_01.mp3", text: "雨幕停了一会儿。你还在吗？……如果只是路过，不必回应；如果愿意停一下，馆藏深处有光想给你看。" },
+      { audio: "idle_voice_02.mp3", text: "……这里的雨很少停。你愿意陪我等它一会儿吗？" },
+      { audio: "idle_voice_03.mp3", text: "夜深了。我把馆藏的灯调暗了一点，怕晃到你的眼睛。" }
+    ];
+    let idleLineIdx = 0;
+
+    function startVoiceRecognition(onResult) {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        toast("这个浏览器不支持语音回应，动一下鼠标也能叫醒她。");
+        return;
+      }
+      const rec = new SR();
+      rec.lang = "zh-CN";
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      rec.onresult = (e) => onResult(e.results[0][0].transcript);
+      rec.onerror = () => toast("没听清，再说一次？或动一下鼠标也行。");
+      rec.start();
+    }
+
+    function handleIdleReply(replyText) {
+      if (idleAudio) { try { idleAudio.pause(); } catch (e) {} idleAudio = null; }
+      if (idleDialog) {
+        const body = idleDialog.querySelector("#idleText");
+        if (body) body.innerHTML = '<span style="color:#7ab8ff">你：</span>' + replyText;
+      }
+      setTimeout(() => {
+        if (idleDialog) idleDialog.classList.remove("show");
+        document.body.classList.remove("idle-mode");
+        toast("好。馆藏的灯重新为你亮起。", true);
+        resetIdle();
+      }, 1500);
+    }
+
+    function triggerIdleMode() {
+      document.body.classList.add("idle-mode");
+      setTimeout(() => {
+        if (!document.body.classList.contains("idle-mode")) return;
+        const dlg = buildIdleDialog();
+        const line = IDLE_LINES[idleLineIdx % IDLE_LINES.length];
+        idleLineIdx++;
+        const body = dlg.querySelector("#idleText");
+        if (body) body.textContent = line.text;
+        dlg.classList.add("show");
+        try {
+          idleAudio = new Audio(line.audio);
+          idleAudio.volume = 0.8;
+          idleAudio.play().catch(() => {});
+        } catch (e) {}
+        /* 语音播放完后自动开启访客语音识别 */
+        setTimeout(() => {
+          if (document.body.classList.contains("idle-mode")) {
+            startVoiceRecognition((text) => handleIdleReply(text));
+          }
+        }, 3000);
+      }, 2000);
+    }
+
+    function resetIdle() {
+      document.body.classList.remove("idle-mode");
+      if (idleDialog) idleDialog.classList.remove("show");
+      if (idleAudio) { try { idleAudio.pause(); } catch (e) {} idleAudio = null; }
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(triggerIdleMode, 25000);
+    }
+    ["mousemove", "click", "keydown", "scroll", "touchstart"].forEach(evt => {
+      document.addEventListener(evt, resetIdle, { passive: true });
+    });
+    resetIdle();
+
+    /* 白夜 portrait 自动切换 + 手动切换按钮 */
+    const photo = $("#portraitPhoto");
+    if (photo) {
+      const dayImg = "portrait_day_blue.jpg";    // 冰蓝少女
+      const nightImg = "portrait_night_red.jpg"; // 红眼新娘
+      let forceMode = null;  // 访客手动覆盖："day" / "night" / null(自动)
+
+      function applyPortrait() {
+        let isNight;
+        if (forceMode === "day") isNight = false;
+        else if (forceMode === "night") isNight = true;
+        else {
+          const h = new Date().getHours();
+          isNight = (h >= 18 || h < 6);
+        }
+        photo.style.backgroundImage = `url("${isNight ? nightImg : dayImg}")`;
+      }
+      applyPortrait();
+      setInterval(applyPortrait, 60000);
+
+      /* 右下角切换按钮 */
+      const toggleBtn = document.createElement("button");
+      toggleBtn.className = "portrait-toggle";
+      toggleBtn.title = "切换白夜形象";
+      toggleBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+      toggleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const h = new Date().getHours();
+        const autoNight = (h >= 18 || h < 6);
+        /* 循环：自动 → 强制白天 → 强制夜晚 → 自动 */
+        if (forceMode === null) forceMode = autoNight ? "day" : "night";
+        else if (forceMode === "day") forceMode = "night";
+        else forceMode = null;
+        applyPortrait();
+        toast(forceMode === null ? "已跟随现实时间" : (forceMode === "day" ? "已切换为冰蓝形象" : "已切换为红眼形象"));
+      });
+      const figure = document.querySelector(".hero-figure");
+      if (figure) figure.appendChild(toggleBtn);
+    }
+
+    /* 霓虹色彩动态层 */
+    const neon = document.createElement("div");
+    neon.id = "neonLayer";
+    document.body.appendChild(neon);
+
+    /* ================= Giscus 真实留言板 ================= */
+    /* 配置区：你从 giscus.app 拿到的两个 ID 填在这里 */
+    const GISCUS_CONFIG = {
+      repo: "A1563250/飞音下游",
+      repo_id: "R_kgDOV3UZPA",
+      category: "Announcements",
+      category_id: "DIC_kwDOV3UZPM4DLtuc",
+      mapping: "pathname",
+      theme: "dark_dimmed",
+      lang: "zh-CN",
+      reactions: "1",
+      emit_metadata: "0",
+      input_position: "bottom",
+      loading: "lazy"
+    };
+
+    function loadGiscus() {
+      const holder = document.getElementById("giscusThread");
+      if (!holder) return;
+      /* 还没配置 ID 时给提示 */
+      if (GISCUS_CONFIG.repo_id.startsWith("PASTE")) {
+        holder.innerHTML = '<div style="padding:20px;border:1px dashed rgba(140,170,255,0.3);border-radius:8px;color:#8995b3;font-size:13px;text-align:center">' +
+          '留言板尚未配置。请按说明文档填入 repo_id 和 category_id。</div>';
+        return;
+      }
+      const s = document.createElement("script");
+      s.src = "https://giscus.app/client.js";
+      s.setAttribute("data-repo", GISCUS_CONFIG.repo);
+      s.setAttribute("data-repo-id", GISCUS_CONFIG.repo_id);
+      s.setAttribute("data-category", GISCUS_CONFIG.category);
+      s.setAttribute("data-category-id", GISCUS_CONFIG.category_id);
+      s.setAttribute("data-mapping", GISCUS_CONFIG.mapping);
+      s.setAttribute("data-strict", "0");
+      s.setAttribute("data-reactions-enabled", GISCUS_CONFIG.reactions);
+      s.setAttribute("data-emit-metadata", GISCUS_CONFIG.emit_metadata);
+      s.setAttribute("data-input-position", GISCUS_CONFIG.input_position);
+      s.setAttribute("data-theme", GISCUS_CONFIG.theme);
+      s.setAttribute("data-lang", GISCUS_CONFIG.lang);
+      s.setAttribute("data-loading", GISCUS_CONFIG.loading);
+      s.crossOrigin = "anonymous";
+      s.async = true;
+      holder.appendChild(s);
+    }
+    loadGiscus();
+
+    /* ================= Lv.5 彩蛋：访客点击产生白夜红蓝涟漪 ================= */
+    if (window.BondSys) {
+      const st = BondSys.get();
+      if (st.level >= 5) {
+        document.addEventListener("click", (e) => {
+          const isNight = document.body.classList.contains("fx-night");
+          const r = document.createElement("div");
+          r.className = "touch-ripple " + (isNight ? "night" : "day");
+          r.style.left = e.clientX + "px";
+          r.style.top = e.clientY + "px";
+          document.body.appendChild(r);
+          setTimeout(() => r.remove(), 1200);
+        });
       }
     }
   });

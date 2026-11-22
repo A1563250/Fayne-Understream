@@ -90,18 +90,25 @@ body.lowperf .hero-figure { animation: none; }
   background: radial-gradient(ellipse at 50% 12%, rgba(190, 210, 255, 0.55), transparent 62%);
   opacity: 0; }
 .ripple {
-  position: fixed; left: 0; right: 0; bottom: 0; height: 16vh; z-index: 1;
+  position: fixed; left: 0; right: 0; bottom: 0; height: 20vh; z-index: 1;
   pointer-events: none;
   background:
     repeating-linear-gradient(180deg,
-      rgba(95, 124, 255, 0.10) 0 2px, transparent 2px 26px),
-    linear-gradient(180deg, transparent, rgba(79, 216, 232, 0.06));
-  filter: blur(0.4px);
-  animation: rippleMove 7s linear infinite alternate;
+      rgba(95, 124, 255, 0.14) 0 2px, transparent 2px 22px),
+    repeating-linear-gradient(180deg,
+      rgba(79, 216, 232, 0.08) 0 1px, transparent 1px 35px),
+    linear-gradient(180deg, transparent, rgba(79, 216, 232, 0.10));
+  filter: blur(0.6px);
+  animation: rippleMove 4s ease-in-out infinite alternate, rippleShift 8s linear infinite;
 }
 @keyframes rippleMove {
-  0%   { transform: translateY(0) scaleY(1); opacity: .75; }
-  100% { transform: translateY(-6px) scaleY(1.15); opacity: 1; }
+  0%   { transform: translateY(0) scaleY(1); opacity: .7; }
+  50%  { transform: translateY(-4px) scaleY(1.2); opacity: 1; }
+  100% { transform: translateY(-2px) scaleY(1.05); opacity: .85; }
+}
+@keyframes rippleShift {
+  0%   { background-position: 0 0, 0 10px, 0 0; }
+  100% { background-position: 0 22px, 0 45px, 0 0; }
 }
 
 /* 区域雨量策略：作品区自动减弱 */
@@ -614,3 +621,224 @@ body.reducefx .ripple { animation: none; }
   body[data-zone="soft"] #rainCanvas { opacity: .6; }
   .ripple { display: none; }
 }
+
+/* 可调用的光 & 事件记录 */
+.lights-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.light-item { padding: 14px 16px; }
+.light-item.locked { opacity: 0.55; filter: saturate(0.4); }
+.light-item .l-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.light-item .l-head b { color: var(--neon-cyan, #4fd8e8); font-size: 12px; letter-spacing: 0.1em; }
+.light-item .l-head span { color: var(--txt, #cfd8ec); font-size: 14px; }
+.light-item .l-desc { color: var(--txt-dim, #8995b3); font-size: 12.5px; line-height: 1.7; margin: 0; }
+
+.event-log { display: flex; flex-direction: column; gap: 10px; }
+.event-item { padding: 12px 16px; border-left: 2px solid rgba(79, 216, 232, 0.35); background: rgba(10, 20, 36, 0.5); border-radius: 6px; }
+.event-item.locked { opacity: 0.45; border-left-color: rgba(140, 160, 200, 0.2); }
+.event-item .e-head { display: flex; gap: 12px; align-items: baseline; margin-bottom: 4px; }
+.event-item .e-head span { color: var(--neon-cyan, #4fd8e8); font-size: 11px; letter-spacing: 0.15em; }
+.event-item .e-head b { color: var(--txt, #cfd8ec); font-size: 14px; }
+.event-item .e-body { color: var(--txt-dim, #8995b3); font-size: 13px; line-height: 1.8; margin: 0; }
+
+/* 在线状态点 */
+.net-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; transition: background 0.6s, box-shadow 0.6s; }
+.net-dot.online { background: #4fd8e8; box-shadow: 0 0 8px rgba(79, 216, 232, 0.8); }
+.net-dot.offline { background: #ff5a6e; box-shadow: 0 0 8px rgba(255, 90, 110, 0.8); }
+
+/* 作品点赞 */
+.wcard .like-btn { position: absolute; right: 10px; bottom: 10px; z-index: 4; background: rgba(6, 12, 24, 0.65);
+  border: 1px solid rgba(140, 170, 255, 0.25); color: #cfd8ec; border-radius: 999px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+  backdrop-filter: blur(6px); transition: transform 0.2s, color 0.2s, border-color 0.2s; }
+.wcard .like-btn:hover { transform: scale(1.05); }
+.wcard .like-btn.liked { color: #ffb4c2; border-color: rgba(255, 180, 194, 0.5); }
+
+/* 留言页互动条 */
+.reply-box { margin-top: 18px; padding: 16px; border-top: 1px dashed rgba(140, 170, 255, 0.2); }
+.reply-box textarea { width: 100%; min-height: 60px; background: rgba(6, 12, 24, 0.6); border: 1px solid rgba(140, 170, 255, 0.25);
+  color: #cfd8ec; padding: 10px 12px; border-radius: 6px; font-family: inherit; font-size: 13px; resize: vertical; }
+.reply-box .emoji-row { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+.reply-box .emoji-row button { background: rgba(6, 12, 24, 0.6); border: 1px solid rgba(140, 170, 255, 0.25); border-radius: 6px;
+  padding: 6px 10px; font-size: 16px; cursor: pointer; transition: transform 0.15s; }
+.reply-box .emoji-row button:hover { transform: translateY(-2px); }
+.reply-box .send-btn { background: linear-gradient(135deg, rgba(79, 216, 232, 0.2), rgba(140, 108, 255, 0.25));
+  border: 1px solid rgba(79, 216, 232, 0.4); color: #cfd8ec; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.reply-box .reply-log { margin-top: 12px; font-size: 13px; line-height: 1.8; color: #a8b8d8; }
+.reply-box .reply-log .me { color: #7ab8ff; }
+.reply-box .reply-log .her { color: #ffb4c2; }
+
+/* 上传作品 */
+.upload-zone { margin-top: 14px; padding: 20px; border: 1px dashed rgba(140, 170, 255, 0.35); border-radius: 8px;
+  text-align: center; color: #8995b3; font-size: 13px; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+.upload-zone:hover { border-color: rgba(79, 216, 232, 0.6); background: rgba(79, 216, 232, 0.05); }
+
+/* ============ 新增动效层 ============ */
+
+/* 1. 人物卡呼吸 + 微动（替代真 Live2D） */
+.hero-figure .photo {
+  animation: portraitBreathe 8s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes portraitBreathe {
+  0%, 100% { transform: scale(1.00) translateY(0); filter: brightness(1.0); }
+  50%      { transform: scale(1.02) translateY(-4px); filter: brightness(1.08); }
+}
+body.lowperf .hero-figure .photo { animation: none; }
+
+/* 2. 霓虹色彩动态层（暗猩红 + 蓝紫交替） */
+#neonLayer {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    radial-gradient(80% 60% at 20% 80%, rgba(255, 40, 80, 0.08), transparent 60%),
+    radial-gradient(60% 50% at 80% 20%, rgba(120, 80, 255, 0.10), transparent 60%);
+  animation: neonShift 12s ease-in-out infinite alternate;
+  transition: opacity 1.5s;
+}
+@keyframes neonShift {
+  0%   { filter: hue-rotate(0deg) brightness(1); }
+  100% { filter: hue-rotate(40deg) brightness(1.15); }
+}
+
+/* 3. 鼠标点击粒子 */
+.click-particle {
+  position: fixed; width: 8px; height: 8px; border-radius: 50%;
+  background: radial-gradient(circle, #4fd8e8, transparent 70%);
+  pointer-events: none; z-index: 9999;
+  animation: particleFly 0.7s ease-out forwards;
+}
+@keyframes particleFly {
+  0%   { opacity: 1; transform: scale(1) translate(0,0); }
+  100% { opacity: 0; transform: scale(0.3) translate(var(--dx), var(--dy)); }
+}
+
+/* 4. 鼠标拖尾光晕 */
+#cursorGlow {
+  position: fixed; width: 200px; height: 200px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(79, 216, 232, 0.08), transparent 70%);
+  pointer-events: none; z-index: 50; transition: transform 0.1s ease-out;
+  mix-blend-mode: screen;
+}
+
+/* 5. 待机 25 秒昏暗模式 + 人物穿出互动 */
+body.idle-mode { filter: brightness(0.35) saturate(0.6); transition: filter 2s; }
+body.idle-mode .hero-figure { animation: idleFloat 10s ease-in-out infinite; }
+@keyframes idleFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+
+/* 人物穿出画框：昏暗模式下 portrait 放大、浮起、贴近屏幕 */
+body.idle-mode .hero-figure .photo {
+  animation: emergeFromFrame 3s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  z-index: 100;
+}
+@keyframes emergeFromFrame {
+  0%   { transform: scale(1.00) translateY(0); filter: brightness(1.0); }
+  50%  { transform: scale(1.15) translateY(-20px); filter: brightness(1.2); }
+  100% { transform: scale(1.25) translateY(-30px); filter: brightness(1.35) drop-shadow(0 0 30px rgba(79,216,232,0.4)); }
+}
+
+/* 互动对话气泡 */
+#idleDialog {
+  position: fixed; left: 50%; bottom: 15%; transform: translateX(-50%);
+  z-index: 200; max-width: 420px; width: 90%;
+  background: rgba(6, 12, 24, 0.92); border: 1px solid rgba(79, 216, 232, 0.35);
+  border-radius: 16px; padding: 18px 22px; color: #cfd8ec;
+  font-size: 14px; line-height: 1.8; backdrop-filter: blur(12px);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 30px rgba(79,216,232,0.15);
+  opacity: 0; transition: opacity 1s, transform 1s;
+  pointer-events: none;
+}
+#idleDialog.show {
+  opacity: 1; transform: translateX(-50%) translateY(-10px);
+  pointer-events: auto;
+}
+#idleDialog .dialog-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px; font-size: 12px; color: #4fd8e8; letter-spacing: 0.15em;
+}
+#idleDialog .dialog-body { margin-bottom: 14px; }
+#idleDialog .dialog-options {
+  display: flex; flex-direction: column; gap: 8px;
+}
+#idleDialog .dialog-options button {
+  background: rgba(79, 216, 232, 0.08); border: 1px solid rgba(79, 216, 232, 0.25);
+  color: #a8b8d8; padding: 8px 14px; border-radius: 8px; font-size: 13px;
+  cursor: pointer; text-align: left; transition: background 0.2s, color 0.2s;
+}
+#idleDialog .dialog-options button:hover {
+  background: rgba(79, 216, 232, 0.18); color: #fff;
+}
+
+/* ============ 鼠标特效 · 白夜双色 ============ */
+/* 拖尾光晕：白天雾蓝 / 夜晚猩红 */
+#cursorGlow.day {
+  background: radial-gradient(circle, rgba(140, 180, 220, 0.14), transparent 70%);
+}
+#cursorGlow.night {
+  background: radial-gradient(circle, rgba(255, 40, 80, 0.16), transparent 70%);
+}
+
+/* 点击特效：Fenay 英文花样字 */
+.fenay-text {
+  position: fixed; z-index: 9999; pointer-events: none;
+  font-family: "Georgia", serif; font-style: italic;
+  font-size: 18px; letter-spacing: 0.2em; font-weight: bold;
+  transform: translate(-50%, -50%);
+  animation: fenayFade 1.1s ease-out forwards;
+}
+.fenay-text.day { color: #b8d4f0; text-shadow: 0 0 12px rgba(140, 180, 220, 0.9), 0 0 30px rgba(140, 180, 220, 0.4); }
+.fenay-text.night { color: #ff8fa8; text-shadow: 0 0 12px rgba(255, 40, 80, 0.9), 0 0 30px rgba(255, 40, 80, 0.5); }
+@keyframes fenayFade {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.6); }
+  40%  { opacity: 1; transform: translate(-50%, -70%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -120%) scale(1); }
+}
+
+/* 手机端点击粒子同色适配 */
+.click-particle.day { background: radial-gradient(circle, #b8d4f0, transparent 70%); }
+.click-particle.night { background: radial-gradient(circle, #ff8fa8, transparent 70%); }
+
+/* 表情包图片按钮 */
+.reply-box .emoji-row button {
+  width: 56px; height: 56px; padding: 0;
+  border-radius: 50%; overflow: hidden;
+  border: 2px solid rgba(140, 170, 255, 0.3);
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.reply-box .emoji-row button img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.reply-box .emoji-row button:hover {
+  transform: translateY(-3px) scale(1.08);
+  border-color: #4fd8e8;
+  box-shadow: 0 4px 16px rgba(79, 216, 232, 0.4);
+}
+
+/* 点赞爱心白夜交替 */
+.wcard .like-btn.day-like { color: #7ab8ff; border-color: rgba(122, 184, 255, 0.5); }
+.wcard .like-btn.night-like { color: #ff5a6e; border-color: rgba(255, 90, 110, 0.5); }
+.wcard .like-btn.liked.day-like { background: rgba(122, 184, 255, 0.15); }
+.wcard .like-btn.liked.night-like { background: rgba(255, 90, 110, 0.15); }
+
+/* Lv.5 彩蛋：访客点击产生白夜红蓝涟漪（不持续动画） */
+.touch-ripple.day {
+  border-color: rgba(122, 184, 255, 0.7);
+  box-shadow: 0 0 20px rgba(122, 184, 255, 0.5);
+}
+.touch-ripple.night {
+  border-color: rgba(255, 90, 110, 0.7);
+  box-shadow: 0 0 20px rgba(255, 90, 110, 0.5);
+}
+@keyframes rippleExpand {
+  0%   { width: 0; height: 0; opacity: 1; }
+  100% { width: 140px; height: 140px; opacity: 0; margin-left: -70px; margin-top: -70px; }
+}
+
+/* 人物框右下角白夜切换按钮 */
+.portrait-toggle {
+  position: absolute; right: 12px; bottom: 12px; z-index: 10;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(6, 12, 24, 0.7); border: 1px solid rgba(140, 170, 255, 0.35);
+  color: #cfd8ec; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(8px); transition: transform 0.2s, border-color 0.2s;
+}
+.portrait-toggle:hover { transform: scale(1.1); border-color: #4fd8e8; }

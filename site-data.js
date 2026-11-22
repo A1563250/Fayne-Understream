@@ -16,15 +16,14 @@ window.SITE_DATA = {
     subtitle: "拾遗之诗｜溺川影像档案"
   },
 
-  /* ---------- 联系方式（待提供，留空即显示缺省文案） ---------- */
+  /* ---------- 联系方式（已录入） ---------- */
   contact: {
-    email: "",                 // 例：example@mail.com
-    copyEnabled: true,         // 是否启用一键复制
+    email: "2604813911@qq.com",
+    copyEnabled: true,
     socials: [
-      // { name: "Bilibili", url: "https://space.bilibili.com/xxxx" },
-      // { name: "小红书", url: "https://..." },
-      // { name: "GitHub",  url: "https://github.com/xxxx" }
-    ]
+      { name: "小红书", url: "https://www.xiaohongshu.com/", handle: "@溺川·妃音辞" }
+    ],
+    landing: "穿过雨幕，在虚妄的旧城之上堕入妃音的永夜之中。"
   },
 
   /* ---------- 视觉资源路径（生成后替换） ---------- */
@@ -160,16 +159,16 @@ window.SITE_DATA = {
         unlock: "最终回声与关注引导" }
     ],
     rules: [
-      { label: "初次抵达溺川",              pts: 10, key: "first_visit",   once: true },
-      { label: "首次进入不同作品区域",      pts: 8,  key: "theme_first",   once: "perTheme" },
-      { label: "查看作品详情",              pts: 4,  key: "work_view",     once: "perDayPerItem" },
-      { label: "阅读溺川档案",              pts: 6,  key: "about_read",    once: "perDay" },
-      { label: "回应未达回声",              pts: 5,  key: "msg_reply",     once: "perDay" },
-      { label: "接通录音",                  pts: 8,  key: "rec_play",      once: "perDayPerItem" },
-      { label: "查看公开联络坐标",          pts: 10, key: "contact_view",  once: "perDay" },
-      { label: "雨后重逢（每日回访）",      pts: 6,  key: "daily_return",  once: "perDay" }
+      { label: "初次抵达溺川",              pts: 2,  key: "first_visit",   once: true },
+      { label: "首次进入不同作品区域",      pts: 1,  key: "theme_first",   once: "perTheme" },
+      { label: "查看作品详情",              pts: 1,  key: "work_view",     once: "perDayPerItem" },
+      { label: "阅读溺川档案",              pts: 1,  key: "about_read",    once: "perDay" },
+      { label: "回应未达回声",              pts: 1,  key: "msg_reply",     once: "perDay" },
+      { label: "接通录音",                  pts: 1,  key: "rec_play",      once: "perDayPerItem" },
+      { label: "查看公开联络坐标",          pts: 1,  key: "contact_view",  once: "perDay" },
+      { label: "雨后重逢（每日回访）",      pts: 1,  key: "daily_return",  once: "perDay" }
     ],
-    dailyMax: 139,
+    dailyMax: 10,
     finalEcho: {
       title: "最终回声",
       system: "雨势在凌晨转弱。档案馆确认，此人已经穿过大部分馆藏，并在数个关键节点留下稳定刻度。",
@@ -181,14 +180,35 @@ window.SITE_DATA = {
     }
   },
 
-  /* ---------- 现实侧记录（B 占位，待本人确认后替换） ---------- */
+  /* ---------- 现实侧记录 ---------- */
   reality: {
     note: "以下信息以现实中的创作能力为准。档案语言只负责转译，不虚构未被验证的经历、工具或项目。",
     skills: ["视觉设计", "角色设定", "海报设计", "UI / 网页习作"],
-    skillsNote: "当前档案仍保留初始记录，正式公开前需要由拾遗者本人确认、删减或替换。",
-    tools: ["Photoshop", "Illustrator", "Procreate", "Figma", "HTML / CSS / JavaScript"],
-    toolsNote: "正式上线前，应仅保留实际掌握且愿意公开的工具。",
-    years: "",      // 创作年限/阶段，留空显示“时间坐标尚未公开”
-    events: ""      // 项目/奖项，留空显示“暂无获准公开的事件记录”
+    skillsNote: "档案会随你在雨中走得更深而不断补充新的记录。",
+    years: "溺·3026 · 雨幕尚未停息，光仍在被拾起。",
+    events: "暂未获准公开。",
+
+    /* 随等级渐进解锁的事件记录（虚构档案体） */
+    eventLog: [
+      { lv: 1, title: "首枚水印",
+        content: "档案确认你并非偶然途经。门边的水印尚未蒸发，溺川因此记下你的第一次抵达。" },
+      { lv: 2, title: "褪色的诗行",
+        content: "纸页空白处浮现一行没有落款的短诗。它并非为你而写，却恰好被你拾起——这是溺川常见的错觉。" },
+      { lv: 3, title: "梦境下沉的方向",
+        content: "当雷声掠过水面，档案开始能辨认你注视的画面。被多看一眼的映像，会在清晨留下更薄的水痕。" },
+      { lv: 4, title: "椿色印记",
+        content: "档案在纸页边缘盖上一枚椿色印记。它不代表归属，只代表「下次抵达时不必再解释来意」。" },
+      { lv: 5, title: "永夜的入口",
+        content: "穿过雨幕，在虚妄的旧城之上堕入妃音的永夜之中。所有被封存的映像在此刻向你打开——它们仍然安静，因为它们本就只在等待被看见。" }
+    ],
+
+    /* 可调用的光（随等级解锁的虚构光条） */
+    lights: [
+      { lv: 1, name: "路灯余光",   desc: "从街口霓虹反射里拾起的第一抹冷光，勉强够照清门牌号。" },
+      { lv: 2, name: "窗内余烬",   desc: "旧城某扇尚未熄的窗，窗后没有人，但有光。" },
+      { lv: 3, name: "水下霓虹",   desc: "沉到江面三层以下的招牌反光，颜色比岸上更接近真实。" },
+      { lv: 4, name: "雨夜灯塔",   desc: "只在暴雨夜会亮起的塔，没有船，但有归人。" },
+      { lv: 5, name: "永夜之芯",   desc: "档案最深处被封存的核心光源。它不属于任何一座城——它只属于愿意穿过雨幕的人。" }
+    ]
   }
 };

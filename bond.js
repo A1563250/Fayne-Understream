@@ -80,13 +80,23 @@
 
     if (!granted) return null;
 
-    st.points += rule.pts;
+    /* 单日分值封顶：避免一天刷到 Lv.5，等级成长缓慢沉浸 */
+    const DAILY_CAP = 10;
+    st.dailyPts = st.dailyPts || {};
+    if (st.dailyPts[d] === undefined) st.dailyPts[d] = 0;
+    let add = rule.pts;
+    if (st.dailyPts[d] + add > DAILY_CAP) {
+      add = Math.max(0, DAILY_CAP - st.dailyPts[d]);
+    }
+    st.dailyPts[d] += add;
+    st.points += add;
+
     const newLv = levelOf(st.points);
     const leveled = newLv > st.level;
     st.level = newLv;
     save(st);
 
-    const result = { pts: rule.pts, label: rule.label, points: st.points, level: newLv, leveled };
+    const result = { pts: add, label: rule.label, points: st.points, level: newLv, leveled, capped: add < rule.pts };
     listeners.forEach(fn => { try { fn(result); } catch (e) {} });
     return result;
   }
